@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Home from "./components/Home";
 import Todos from "./components/Todos";
 import {
@@ -17,17 +17,57 @@ export default function App() {
     { text: "create an app", key: "2" },
     { text: "play on the switch", key: "3" },
   ]);
+  const [notes, setNotes] = useState([]);
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    const notes = AsyncStorage.getItem("notes");
+    if (notes && notes.length > 0) {
+      setNotes(JSON.parse(notes));
+    }
+  }, []);
 
   const pressHandler = (key) => {
     setTodos((prevTodos) => {
       return prevTodos.filter((todo) => todo.key != key);
     });
   };
-  const submitHandler = (text) => {
+
+  const cloneNotes = () => {
+    return [...notes];
+  };
+
+  const updateAsyncStorage = (notes) => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        await AsyncStorage.removeItem("notes");
+        await AsyncStorage.setItem("notes", JSON.stringify(notes));
+        return resolve(true);
+      } catch (e) {
+        return reject(e);
+      }
+    });
+  };
+
+  const submitHandler = async (text) => {
     if (text.length > 3) {
-      setTodos((prevTodos) => {
-        return [{ text, key: Math.random().toString() }, ...prevTodos];
-      });
+      // setTodos((prevTodos) => {
+      //   return [{ text, key: Math.random().toString() }, ...prevTodos];
+      // });
+      try {
+        const notes = cloneNotes();
+        notes.push(note);
+        await updateAsyncStorage(notes);
+        setNotes(notes);
+        setNote("");
+        // this.setState({
+        //   notes: notes,
+        //   note: "",
+        // });
+      } catch (e) {
+        // notes could not be updated
+        alert(e);
+      }
     } else {
       Alert.alert("OOPS", "Todo must be over 3 characters long", [
         { text: "Understood", onPress: () => console.log("alert closed") },
@@ -47,7 +87,7 @@ export default function App() {
           <AddTodo submitHandler={submitHandler} />
           <View style={styles.list}>
             <FlatList
-              data={todos}
+              data={notes}
               renderItem={({ item }) => (
                 <Todos item={item} pressHandler={pressHandler} />
               )}
